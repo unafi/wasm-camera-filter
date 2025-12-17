@@ -13,6 +13,16 @@
 
 **GitHub Pages**: https://unafi.github.io/wasm-camera-filter/
 
+## 📚 技術ドキュメント
+
+**詳細解説**: https://unafi.github.io/wasm-camera-filter/docs/
+
+- 実行フローの詳細解説
+- WebAssembly実装ガイド  
+- 性能分析と最適化手法
+
+※ `/docs`ディレクトリにはMarkdown(.md)版も含まれています
+
 ## 📱 対応デバイス
 
 - **iPhone**: Safari (iOS 11+)
