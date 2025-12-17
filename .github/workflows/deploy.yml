@@ -37,13 +37,23 @@ jobs:
     - name: Build WebAssembly
       run: wasm-pack build --target web --out-dir pkg
       
+    - name: Prepare deployment files
+      run: |
+        mkdir -p deploy
+        cp index.html deploy/
+        cp main.js deploy/
+        cp style.css deploy/
+        cp -r pkg deploy/
+        cp -r docs deploy/
+        cp README.md deploy/
+      
     - name: Setup Pages
       uses: actions/configure-pages@v4
       
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: '.'
+        path: './deploy'
         
     - name: Deploy to GitHub Pages
       id: deployment
