@@ -86,9 +86,15 @@ python https_server.py
 
 MIT License
 
-## 🤝 コントリビューション
+## 🎉 おわりに
 
-プルリクエストやイシューを歓迎します！
+このプロジェクトは[Kiro IDE](https://aws.amazon.com/jp/blogs/news/general-availability/)で作りました。
+
+KiroとのチャットでWebAssemblyに向く題材を選び、要件を整理し、プログラムやドキュメントの全てをKiroに作ってもらいました。**人間は１行も書いていません！** 
+
+総制作時間はなんと**驚異の3時間半**です。
+
+このプロジェクトにはKiroのSPEC駆動開発を支える`steering`と`specs`が`.kiro`フォルダに格納されています。`git clone`してKiro IDEで開くだけで状況を引き継ぎ、機能拡張などの作業を進めることができます。
 
 ---
 
