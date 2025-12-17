@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>実行フロー詳解 - WebAssembly カメラフィルタ</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        h3 {
+            color: #7f8c8d;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+        .flow-step {
+            background: #ecf0f1;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .step-number {
+            background: #e74c3c;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+        .file-ref {
+            background: #d4edda;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #155724;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .sequence-diagram {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            overflow-x: auto;
+        }
+        .sequence-diagram pre {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre;
+            margin: 0;
+            text-align: left;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 実行フロー詳解</h1>
+        
+        <p><a href="index.html">← 技術解説トップに戻る</a></p>
+
+        <div class="highlight">
+            <strong>このページでは</strong>、ブラウザでindex.htmlを開いてから、カメラアクセス許可を経て、エフェクト処理が実行されるまでの詳細な流れを、実際のコード断片と共に解説します。
+        </div>
+
+        <div class="sequence-diagram">
+            <h3>📋 実行シーケンス概要</h3>
+            <pre>
+ブラウザ → index.html → main.js → WebAssembly初期化 → カメラアクセス → リアルタイム処理
+   │           │          │              │                │              │
+   │           │          │              │                │              └─ エフェクト適用
+   │           │          │              │                └─ ストリーム取得
+   │           │          │              └─ WASM モジュール読み込み
+   │           │          └─ アプリケーション初期化
+   │           └─ DOM構造とUI表示
+   └─ HTMLファイル読み込み
+            </pre>
+        </div>
+
+        <section>
+            <h2>ステップ1: HTMLエントリーポイント</h2>
+            <div class="flow-step">
+                <span class="step-number">1</span>
+                <strong>ブラウザがindex.htmlを読み込み</strong>
+            </div>
+            
+            <div class="file-ref">📄 index.html (最下部)</div>
+            <div class="code-block">
+&lt;!-- JavaScriptモジュール読み込み --&gt;
+&lt;script type="module" src="main.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+            </div>
+            
+            <p><strong>解説:</strong> HTMLが読み込まれると、DOMContentLoadedイベントが発火し、main.jsのモジュールが実行されます。</p>
+        </section>
+
+        <section>
+            <h2>ステップ2: アプリケーション初期化開始</h2>
+            <div class="flow-step">
+                <span class="step-number">2</span>
+                <strong>DOMContentLoadedイベントでアプリ開始</strong>
+            </div>
+            
+            <div class="file-ref">📄 main.js (最下部)</div>
+            <div class="code-block">
+// アプリケーション開始
+document.addEventListener('DOMContentLoaded', async () => {
+    const app = new CameraFilterApp();
+    await app.init();
+});
+            </div>
+            
+            <p><strong>解説:</strong> DOMが完全に読み込まれた後、CameraFilterAppクラスのインスタンスを作成し、初期化を開始します。</p>
+        </section>
+
+        <section>
+            <h2>ステップ3: WebAssemblyモジュール初期化</h2>
+            <div class="flow-step">
+                <span class="step-number">3</span>
+                <strong>WebAssemblyモジュールの読み込みと初期化</strong>
+            </div>
+            
+            <div class="file-ref">📄 main.js - CameraFilterApp.init()</div>
+            <div class="code-block">
+async init() {
+    try {
+        console.log('WebAssemblyモジュールを初期化中...');
+        await init(); // WebAssemblyモジュール初期化
+        
+        // WebAssemblyプロセッサを初期化
+        const processor = new ImageProcessor(640, 480);
+        this.wasmEngine.setWasmProcessor(processor);
+        
+        console.log('WebAssembly初期化完了');
+        
+        // DOM要素を取得
+        this.setupDOM();
+        
+        // イベントリスナーを設定
+        this.setupEventListeners();
+        
+        // カメラを初期化
+        await this.initCamera();
+        
+    } catch (error) {
+        console.error('初期化エラー:', error);
+        this.camera.showError('アプリケーションの初期化に失敗しました');
+    }
+}
+            </div>
+            
+            <div class="highlight">
+                <strong>重要:</strong> <code>await init()</code>でWebAssemblyモジュール（pkg/wasm_camera_filter.js）を非同期で読み込みます。この時点でRustで書いたコードがブラウザで実行可能になります。
+            </div>
+        </section>
+
+        <section>
+            <h2>ステップ4: DOM要素とイベントリスナー設定</h2>
+            <div class="flow-step">
+                <span class="step-number">4</span>
+                <strong>UI要素の取得とイベント設定</strong>
+            </div>
+            
+            <div class="file-ref">📄 main.js - setupEventListeners()</div>
+            <div class="code-block">
+setupEventListeners() {
+    // エフェクトボタン
+    document.querySelectorAll('.effect-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const effect = parseInt(e.target.dataset.effect);
+            this.setEffect(effect);
+            
+            // アクティブ状態を更新
+            document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // エンジン切り替えボタン
+    document.getElementById('wasm-engine').addEventListener('click', () => {
+        this.switchEngine(true);
+    });
+    
+    document.getElementById('js-engine').addEventListener('click', () => {
+        this.switchEngine(false);
+    });
+    
+    // その他のボタンイベント...
+}
+            </div>
+            
+            <p><strong>解説:</strong> エフェクト選択ボタン、エンジン切り替えボタン、撮影ボタンなどのイベントリスナーを設定します。</p>
+        </section>
+
+        <section>
+            <h2>ステップ5: カメラアクセス要求</h2>
+            <div class="flow-step">
+                <span class="step-number">5</span>
+                <strong>WebRTC APIでカメラアクセス許可を要求</strong>
+            </div>
+            
+            <div class="file-ref">📄 main.js - CameraController.initCamera()</div>
+            <div class="code-block">
+async initCamera(videoElement) {
+    this.video = videoElement;
+    
+    try {
+        console.log('カメラアクセスを要求中...');
+        
+        // カメラ制約設定（モバイル最適化）
+        const constraints = {
+            video: {
+                facingMode: this.currentFacingMode, // 'environment' = バックカメラ
+                width: { ideal: 640, max: 1280 },
+                height: { ideal: 480, max: 720 },
+                frameRate: { ideal: 30, max: 60 }
+            },
+            audio: false
+        };
+
+        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+        this.video.srcObject = this.stream;
+        
+        console.log('カメラアクセス成功');
+        return true;
+        
+    } catch (error) {
+        console.error('カメラアクセスエラー:', error);
+        this.handleCameraError(error);
+        return false;
+    }
+}
+            </div>
+            
+            <div class="highlight">
+                <strong>ユーザー体験:</strong> この時点でブラウザがカメラアクセス許可ダイアログを表示します。ユーザーが「許可」をクリックすると、カメラストリームが取得されます。
+            </div>
+        </section>
+
+        <section>
+            <h2>ステップ6: リアルタイム画像処理開始</h2>
+            <div class="flow-step">
+                <span class="step-number">6</span>
+                <strong>requestAnimationFrameによる連続処理開始</strong>
+            </div>
+            
+            <div class="file-ref">📄 main.js - startProcessing()</div>
+            <div class="code-block">
+startProcessing() {
+    if (this.isProcessing) {
+        console.log('既に処理中です');
+        return;
+    }
+    
+    this.isProcessing = true;
+    console.log('リアルタイム画像処理を開始');
+    
+    const processFrame = () => {
+        if (!this.isProcessing) {
+            console.log('処理が停止されました');
+            return;
+        }
+        
+        try {
+            // フレームをキャプチャ
+            const imageData = this.camera.captureFrame(this.canvas);
+            
+            if (imageData && imageData.data.length > 0) {
+                // WebAssemblyプロセッサのサイズを更新
+                if (this.wasmEngine.wasmProcessor) {
+                    const { width, height } = imageData;
+                    if (this.wasmEngine.wasmProcessor.width !== width || 
+                        this.wasmEngine.wasmProcessor.height !== height) {
+                        console.log(`画像サイズ変更: ${width}x${height}`);
+                        this.wasmEngine.wasmProcessor = new ImageProcessor(width, height);
+                    }
+                }
+                
+                // フィルタを適用
+                this.currentEngine.applyFilter(imageData);
+                
+                // 結果を表示
+                this.ctx.putImageData(imageData, 0, 0);
+                
+                // FPS表示を更新
+                this.updateFPSDisplay();
+            }
+        } catch (error) {
+            console.error('フレーム処理エラー:', error);
+        }
+        
+        this.animationId = requestAnimationFrame(processFrame);
+    };
+    
+    processFrame();
+}
+            </div>
+            
+            <p><strong>解説:</strong> <code>requestAnimationFrame</code>を使って、ブラウザのリフレッシュレートに同期した連続処理を開始します。通常60FPSで実行されます。</p>
+        </section>
+
+        <section>
+            <h2>ステップ7: エフェクト処理実行</h2>
+            <div class="flow-step">
+                <span class="step-number">7</span>
+                <strong>WebAssemblyまたはJavaScriptでエフェクト適用</strong>
+            </div>
+            
+            <div class="file-ref">📄 main.js - FilterEngine.applyWasmFilter()</div>
+            <div class="code-block">
+applyWasmFilter(imageData) {
+    const { width, height, data } = imageData;
+    
+    // WebAssemblyプロセッサのサイズを更新
+    if (this.wasmProcessor.width !== width || this.wasmProcessor.height !== height) {
+        this.wasmProcessor = new ImageProcessor(width, height);
+    }
+    
+    switch (this.currentEffect) {
+        case 0: // HDRアニメ調
+            this.wasmProcessor.hdr_anime(data);
+            break;
+        case 1: // ガウシアンブラー
+            this.wasmProcessor.gaussian_blur(data, 3.0);
+            break;
+        case 2: // エッジ検出
+            this.wasmProcessor.edge_detection(data);
+            break;
+        case 3: // セピア調
+            this.wasmProcessor.sepia_tone(data);
+            break;
+        case 4: // ネガフィルム
+            this.wasmProcessor.negative(data);
+            break;
+        case 5: // シャープネス
+            this.wasmProcessor.sharpen(data);
+            break;
+    }
+}
+            </div>
+            
+            <div class="file-ref">📄 src/lib.rs - hdr_anime() (WebAssembly側)</div>
+            <div class="code-block">
+/// HDRアニメ調エフェクトを適用
+pub fn hdr_anime(&mut self, data: &mut [u8]) {
+    console_log!("Applying HDR anime effect");
+    
+    let width = self.width as usize;
+    let height = self.height as usize;
+    
+    // ステップ1: HDR強調処理
+    self.apply_hdr_enhancement(data, width, height);
+    
+    // ステップ2: アニメ調処理（色の階調化）
+    self.apply_anime_posterization(data, width, height);
+    
+    // ステップ3: エッジ強調
+    self.apply_edge_enhancement(data, width, height);
+}
+            </div>
+            
+            <div class="highlight">
+                <strong>重要:</strong> この時点で、JavaScriptからRustで書かれたWebAssembly関数を呼び出しています。画像データ（Uint8ClampedArray）がWebAssemblyメモリ空間で高速処理されます。
+            </div>
+        </section>
+
+        <section>
+            <h2>ステップ8: 結果表示とFPS測定</h2>
+            <div class="flow-step">
+                <span class="step-number">8</span>
+                <strong>処理結果をCanvasに描画し、性能を測定</strong>
+            </div>
+            
+            <div class="file-ref">📄 main.js - updateFPSDisplay()</div>
+            <div class="code-block">
+updateFPSDisplay() {
+    const wasmFPS = this.wasmEngine.getFPS();
+    const jsFPS = this.jsEngine.getFPS();
+    const currentFPS = this.currentEngine.getFPS();
+    
+    document.getElementById('fps-display').textContent = `FPS: ${currentFPS}`;
+    document.getElementById('wasm-fps').textContent = wasmFPS || '--';
+    document.getElementById('js-fps').textContent = jsFPS || '--';
+    
+    // 速度比を計算
+    if (wasmFPS > 0 && jsFPS > 0) {
+        const ratio = (wasmFPS / jsFPS).toFixed(1);
+        document.getElementById('speed-ratio').textContent = `${ratio}x`;
+    }
+}
+            </div>
+            
+            <p><strong>解説:</strong> 処理された画像データをCanvasに描画し、同時にFPSを測定・表示します。WebAssemblyとJavaScriptの性能差がリアルタイムで確認できます。</p>
+        </section>
+
+        <section>
+            <h2>🔄 継続的な処理ループ</h2>
+            <div class="highlight">
+                <strong>ループ処理:</strong> ステップ6〜8が<code>requestAnimationFrame</code>によって継続的に実行され、リアルタイムなカメラフィルタ効果を実現しています。
+            </div>
+            
+            <div class="sequence-diagram">
+                <h3>処理ループの詳細</h3>
+                <pre>
+requestAnimationFrame
+         │
+         ▼
+┌─────────────────┐
+│  フレーム取得    │ ← camera.captureFrame()
+└─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ エフェクト適用   │ ← wasmProcessor.hdr_anime() または jsHdrAnime()
+└─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Canvas描画     │ ← ctx.putImageData()
+└─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│   FPS更新      │ ← updateFPSDisplay()
+└─────────────────┘
+         │
+         ▼
+requestAnimationFrame (次のフレーム)
+                </pre>
+            </div>
+        </section>
+
+        <footer style="margin-top: 50px; text-align: center; color: #7f8c8d;">
+            <p><a href="index.html" style="color: #3498db;">← 技術解説トップに戻る</a></p>
+        </footer>
+    </div>
+</body>
+</html>

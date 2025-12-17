@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAssembly カメラフィルタ - 技術解説</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        h3 {
+            color: #7f8c8d;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .flow-step {
+            background: #ecf0f1;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+        .nav {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .nav a:hover {
+            background: #2c3e50;
+        }
+        .architecture-diagram {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 WebAssembly カメラフィルタ - 技術解説</h1>
+        
+        <div class="nav">
+            <a href="#overview">概要</a>
+            <a href="#architecture">アーキテクチャ</a>
+            <a href="#flow">実行フロー</a>
+            <a href="#wasm">WebAssembly詳解</a>
+            <a href="#performance">性能比較</a>
+        </div>
+
+        <section id="overview">
+            <h2>🎯 プロジェクト概要</h2>
+            <p>このプロジェクトは、<strong>WebAssembly (WASM)</strong>とJavaScriptの性能比較を目的としたリアルタイムカメラフィルタアプリケーションです。</p>
+            
+            <div class="highlight">
+                <strong>学習ポイント:</strong>
+                <ul>
+                    <li>WebAssemblyとJavaScriptの連携方法</li>
+                    <li>Rustで書いたコードをWebブラウザで実行する仕組み</li>
+                    <li>リアルタイム画像処理の実装</li>
+                    <li>WebRTC APIを使ったカメラアクセス</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="architecture">
+            <h2>🏗️ システムアーキテクチャ</h2>
+            
+            <div class="architecture-diagram">
+                <pre>
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   index.html    │    │    main.js      │    │   src/lib.rs    │
+│  (エントリー)    │───▶│  (JavaScript)   │───▶│   (Rust/WASM)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   style.css     │    │  WebRTC API     │    │   wasm-bindgen  │
+│   (スタイル)     │    │ (カメラアクセス)  │    │   (バインディング) │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                </pre>
+            </div>
+
+            <h3>主要コンポーネント</h3>
+            <ul>
+                <li><strong>index.html</strong>: UIとDOM構造の定義</li>
+                <li><strong>main.js</strong>: アプリケーションロジックとWASM連携</li>
+                <li><strong>src/lib.rs</strong>: Rustで実装された高速画像処理</li>
+                <li><strong>pkg/</strong>: wasm-packで生成されたWebAssemblyモジュール</li>
+            </ul>
+        </section>
+
+        <section id="flow">
+            <h2>🔄 実行フロー詳解</h2>
+            <p><a href="execution-flow.html">詳細な実行フロー解説</a></p>
+        </section>
+
+        <section id="wasm">
+            <h2>⚡ WebAssembly詳解</h2>
+            <p><a href="webassembly-guide.html">WebAssembly実装ガイド</a></p>
+        </section>
+
+        <section id="performance">
+            <h2>📊 性能比較</h2>
+            <p><a href="performance-analysis.html">性能比較と最適化</a></p>
+        </section>
+
+        <footer style="margin-top: 50px; text-align: center; color: #7f8c8d;">
+            <p>WebAssembly Camera Filter - 技術解説ドキュメント</p>
+            <p><a href="../index.html" style="color: #3498db;">← アプリケーションに戻る</a></p>
+        </footer>
+    </div>
+</body>
+</html>

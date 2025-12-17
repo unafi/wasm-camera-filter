@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAssembly実装ガイド - WebAssembly カメラフィルタ</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        h3 {
+            color: #7f8c8d;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+        .rust-code {
+            border-left: 4px solid #ce422b;
+        }
+        .js-code {
+            border-left: 4px solid #f7df1e;
+        }
+        .toml-code {
+            border-left: 4px solid #9c4221;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+        .file-ref {
+            background: #d4edda;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #155724;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .wasm-flow {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .memory-diagram {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            text-align: center;
+            overflow-x: auto;
+        }
+        .memory-diagram pre {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre;
+            margin: 0;
+            text-align: left;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ WebAssembly実装ガイド</h1>
+        
+        <p><a href="index.html">← 技術解説トップに戻る</a></p>
+
+        <div class="highlight">
+            <strong>このページでは</strong>、RustでWebAssemblyモジュールを作成し、JavaScriptから呼び出す具体的な実装方法を詳しく解説します。
+        </div>
+
+        <section>
+            <h2>🦀 Rustプロジェクト設定</h2>
+            
+            <h3>Cargo.toml設定</h3>
+            <div class="file-ref">📄 Cargo.toml</div>
+            <div class="code-block toml-code">
+[package]
+name = "wasm-camera-filter"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]  # WebAssembly用の動的ライブラリとして出力
+
+[dependencies]
+wasm-bindgen = "0.2"     # JavaScriptとRustの橋渡し
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",             # console.log() 使用のため
+]
+            </div>
+            
+            <div class="highlight">
+                <strong>重要設定:</strong>
+                <ul>
+                    <li><code>crate-type = ["cdylib"]</code>: WebAssembly用の動的ライブラリを生成</li>
+                    <li><code>wasm-bindgen</code>: RustとJavaScript間のバインディング</li>
+                    <li><code>web-sys</code>: Web API（console.logなど）へのアクセス</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>🔧 wasm-bindgenによるバインディング</h2>
+            
+            <h3>基本的な構造体とメソッド</h3>
+            <div class="file-ref">📄 src/lib.rs</div>
+            <div class="code-block rust-code">
+use wasm_bindgen::prelude::*;
+
+// WebAssembly用のコンソール出力設定
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+// デバッグ用マクロ
+macro_rules! console_log {
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
+/// WebAssembly画像処理エンジン
+#[wasm_bindgen]
+pub struct ImageProcessor {
+    width: u32,
+    height: u32,
+}
+
+#[wasm_bindgen]
+impl ImageProcessor {
+    /// 新しいImageProcessorインスタンスを作成
+    #[wasm_bindgen(constructor)]
+    pub fn new(width: u32, height: u32) -> ImageProcessor {
+        console_log!("ImageProcessor initialized: {}x{}", width, height);
+        ImageProcessor { width, height }
+    }
+}
+            </div>
+            
+            <div class="highlight">
+                <strong>wasm-bindgenの役割:</strong>
+                <ul>
+                    <li><code>#[wasm_bindgen]</code>: 構造体やメソッドをJavaScriptから呼び出し可能にする</li>
+                    <li><code>#[wasm_bindgen(constructor)]</code>: JavaScriptの<code>new</code>演算子で呼び出し可能</li>
+                    <li><code>extern "C"</code>: JavaScript関数をRustから呼び出し可能にする</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>🎨 画像処理メソッドの実装</h2>
+            
+            <h3>HDRアニメ調エフェクト</h3>
+            <div class="file-ref">📄 src/lib.rs - hdr_anime()</div>
+            <div class="code-block rust-code">
+/// HDRアニメ調エフェクトを適用
+pub fn hdr_anime(&mut self, data: &mut [u8]) {
+    console_log!("Applying HDR anime effect");
+    
+    let width = self.width as usize;
+    let height = self.height as usize;
+    
+    // ステップ1: HDR強調処理
+    self.apply_hdr_enhancement(data, width, height);
+    
+    // ステップ2: アニメ調処理（色の階調化）
+    self.apply_anime_posterization(data, width, height);
+    
+    // ステップ3: エッジ強調
+    self.apply_edge_enhancement(data, width, height);
+}
+
+/// HDR強調処理を適用
+fn apply_hdr_enhancement(&self, data: &mut [u8], width: usize, height: usize) {
+    for i in (0..data.len()).step_by(4) {
+        let r = data[i] as f32 / 255.0;
+        let g = data[i + 1] as f32 / 255.0;
+        let b = data[i + 2] as f32 / 255.0;
+
+        // ガンマ補正（コントラスト強化）
+        let gamma = 0.7;
+        let enhanced_r = r.powf(gamma);
+        let enhanced_g = g.powf(gamma);
+        let enhanced_b = b.powf(gamma);
+
+        // 彩度向上
+        let saturation_boost = 1.8;
+        let gray = enhanced_r * 0.299 + enhanced_g * 0.587 + enhanced_b * 0.114;
+        
+        let final_r = gray + (enhanced_r - gray) * saturation_boost;
+        let final_g = gray + (enhanced_g - gray) * saturation_boost;
+        let final_b = gray + (enhanced_b - gray) * saturation_boost;
+
+        data[i] = (final_r * 255.0).max(0.0).min(255.0) as u8;
+        data[i + 1] = (final_g * 255.0).max(0.0).min(255.0) as u8;
+        data[i + 2] = (final_b * 255.0).max(0.0).min(255.0) as u8;
+    }
+}
+            </div>
+            
+            <div class="highlight">
+                <strong>Rustの利点:</strong>
+                <ul>
+                    <li><strong>メモリ安全性</strong>: バッファオーバーフローなどのメモリエラーを防止</li>
+                    <li><strong>ゼロコスト抽象化</strong>: 高レベルなコードでも高速実行</li>
+                    <li><strong>型安全性</strong>: コンパイル時に多くのエラーを検出</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>🔄 JavaScriptとの連携</h2>
+            
+            <h3>WebAssemblyモジュールの読み込み</h3>
+            <div class="file-ref">📄 main.js</div>
+            <div class="code-block js-code">
+import init, { ImageProcessor } from './pkg/wasm_camera_filter.js';
+
+class CameraFilterApp {
+    async init() {
+        try {
+            // WebAssemblyモジュール初期化
+            await init();
+            
+            // ImageProcessorインスタンス作成
+            const processor = new ImageProcessor(640, 480);
+            this.wasmEngine.setWasmProcessor(processor);
+            
+            console.log('WebAssembly初期化完了');
+        } catch (error) {
+            console.error('WebAssembly初期化エラー:', error);
+        }
+    }
+}
+            </div>
+            
+            <h3>WebAssembly関数の呼び出し</h3>
+            <div class="file-ref">📄 main.js - applyWasmFilter()</div>
+            <div class="code-block js-code">
+applyWasmFilter(imageData) {
+    const { width, height, data } = imageData;
+    
+    // WebAssemblyプロセッサのサイズを更新
+    if (this.wasmProcessor.width !== width || this.wasmProcessor.height !== height) {
+        this.wasmProcessor = new ImageProcessor(width, height);
+    }
+    
+    switch (this.currentEffect) {
+        case 0: // HDRアニメ調
+            this.wasmProcessor.hdr_anime(data);  // ← Rust関数を呼び出し
+            break;
+        case 1: // ガウシアンブラー
+            this.wasmProcessor.gaussian_blur(data, 3.0);
+            break;
+        // その他のエフェクト...
+    }
+}
+            </div>
+        </section>
+
+        <section>
+            <h2>🏗️ ビルドプロセス</h2>
+            
+            <div class="wasm-flow">
+                <h3>wasm-packによるビルドフロー</h3>
+                <div class="memory-diagram">
+<pre>
+Rust Source Code (src/lib.rs)
+         │
+         ▼ rustc + wasm32-unknown-unknown
+WebAssembly Binary (.wasm)
+         │
+         ▼ wasm-bindgen
+JavaScript Bindings (.js)
+         │
+         ▼ wasm-pack
+pkg/ ディレクトリ
+├── wasm_camera_filter.js      ← JavaScript バインディング
+├── wasm_camera_filter_bg.wasm ← WebAssembly バイナリ
+├── wasm_camera_filter.d.ts    ← TypeScript 型定義
+└── package.json               ← NPM パッケージ情報
+</pre>
+                </div>
+            </div>
+            
+            <h3>ビルドコマンド</h3>
+            <div class="code-block">
+# WebAssemblyモジュールをビルド
+wasm-pack build --target web --out-dir pkg
+
+# 生成されるファイル:
+# - pkg/wasm_camera_filter.js      (JavaScriptバインディング)
+# - pkg/wasm_camera_filter_bg.wasm (WebAssemblyバイナリ)
+# - pkg/wasm_camera_filter.d.ts    (TypeScript型定義)
+            </div>
+        </section>
+
+        <section>
+            <h2>💾 メモリ管理と最適化</h2>
+            
+            <h3>WebAssemblyメモリ空間</h3>
+            <div class="memory-diagram">
+<pre>
+JavaScript Heap          WebAssembly Linear Memory
+┌─────────────────┐      ┌─────────────────────────┐
+│  ImageData      │      │                         │
+│  ┌─────────────┐│      │  Rust Variables         │
+│  │ Uint8Array  ││ ───▶ │  ┌─────────────────┐    │
+│  │ [R,G,B,A,   ││      │  │ &mut [u8] data  │    │
+│  │  R,G,B,A,   ││      │  │ width: usize    │    │
+│  │  ...]       ││      │  │ height: usize   │    │
+│  └─────────────┘│      │  └─────────────────┘    │
+└─────────────────┘      └─────────────────────────┘
+</pre>
+            </div>
+            
+            <div class="highlight">
+                <strong>メモリ効率:</strong>
+                <ul>
+                    <li><strong>ゼロコピー</strong>: JavaScriptとWebAssembly間でデータをコピーせずに共有</li>
+                    <li><strong>線形メモリ</strong>: WebAssemblyの連続メモリ空間で高速アクセス</li>
+                    <li><strong>自動管理</strong>: Rustの所有権システムによる安全なメモリ管理</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>🚀 性能最適化のポイント</h2>
+            
+            <h3>1. SIMD命令の活用</h3>
+            <div class="code-block rust-code">
+// 将来的な最適化例（SIMD使用）
+#[cfg(target_arch = "wasm32")]
+use std::arch::wasm32::*;
+
+// 4つのピクセルを同時処理
+fn process_pixels_simd(data: &mut [u8]) {
+    // SIMD命令を使った並列処理
+    // 実装は複雑になるが、大幅な性能向上が期待できる
+}
+            </div>
+            
+            <h3>2. メモリアクセスパターンの最適化</h3>
+            <div class="code-block rust-code">
+// 効率的なメモリアクセス
+for y in 0..height {
+    for x in 0..width {
+        let idx = (y * width + x) * 4;  // 連続アクセス
+        // ピクセル処理...
+    }
+}
+            </div>
+            
+            <h3>3. 関数インライン化</h3>
+            <div class="code-block rust-code">
+#[inline(always)]
+fn get_pixel_index(x: usize, y: usize, width: usize) -> usize {
+    (y * width + x) * 4
+}
+            </div>
+        </section>
+
+        <section>
+            <h2>🔍 デバッグとプロファイリング</h2>
+            
+            <h3>コンソール出力</h3>
+            <div class="code-block rust-code">
+// Rustからブラウザのコンソールに出力
+console_log!("Processing image: {}x{}", width, height);
+console_log!("Effect applied: {}", effect_name);
+            </div>
+            
+            <h3>パフォーマンス測定</h3>
+            <div class="code-block js-code">
+// JavaScript側でのパフォーマンス測定
+const startTime = performance.now();
+this.wasmProcessor.hdr_anime(data);
+const endTime = performance.now();
+console.log(`WASM処理時間: ${endTime - startTime}ms`);
+            </div>
+        </section>
+
+        <footer style="margin-top: 50px; text-align: center; color: #7f8c8d;">
+            <p><a href="index.html" style="color: #3498db;">← 技術解説トップに戻る</a></p>
+        </footer>
+    </div>
+</body>
+</html>
