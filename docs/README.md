@@ -14,20 +14,35 @@
 
 ```mermaid
 graph TB
-    A[index.html<br/>エントリーポイント] --> B[main.js<br/>JavaScript制御]
-    A --> C[style.css<br/>スタイル]
-    B --> D[src/lib.rs<br/>Rust/WASM]
-    B --> E[WebRTC API<br/>カメラアクセス]
-    D --> F[wasm-bindgen<br/>バインディング]
-    
-    subgraph "生成ファイル"
-        G[pkg/wasm_camera_filter.js]
-        H[pkg/wasm_camera_filter_bg.wasm]
+    subgraph "フロントエンド"
+        A[index.html<br/>エントリーポイント]
+        B[main.js<br/>JavaScript制御]
+        C[style.css<br/>スタイル]
     end
     
-    F --> G
-    F --> H
-    B --> G
+    subgraph "WebAssembly"
+        D[src/lib.rs<br/>Rust実装]
+        E[wasm-bindgen<br/>バインディング]
+    end
+    
+    subgraph "生成ファイル"
+        F[pkg/wasm_camera_filter.js<br/>JSバインディング]
+        G[pkg/wasm_camera_filter_bg.wasm<br/>WASMバイナリ]
+    end
+    
+    subgraph "ブラウザAPI"
+        H[WebRTC API<br/>カメラアクセス]
+        I[Canvas API<br/>画像処理]
+    end
+    
+    A --> B
+    A --> C
+    B --> F
+    B --> H
+    B --> I
+    D --> E
+    E --> F
+    E --> G
 ```
 
 ### 主要コンポーネント
