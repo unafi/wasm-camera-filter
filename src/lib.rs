@@ -8,8 +8,15 @@ extern "C" {
 }
 
 // デバッグ用マクロ
+#[cfg(not(test))]
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
+// テスト時はコンソール出力を無効化
+#[cfg(test)]
+macro_rules! console_log {
+    ($($t:tt)*) => {}
 }
 
 /// WebAssembly画像処理エンジン
@@ -361,5 +368,157 @@ impl ImageProcessor {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// テスト用の小さな画像データを作成
+    fn create_test_image_data(width: u32, height: u32) -> Vec<u8> {
+        let mut data = Vec::new();
+        for y in 0..height {
+            for x in 0..width {
+                // グラデーション画像を作成
+                let r = (x * 255 / width) as u8;
+                let g = (y * 255 / height) as u8;
+                let b = 128;
+                let a = 255;
+                data.extend_from_slice(&[r, g, b, a]);
+            }
+        }
+        data
+    }
+
+    #[test]
+    fn test_image_processor_creation() {
+        let processor = ImageProcessor { width: 100, height: 100 };
+        assert_eq!(processor.width, 100);
+        assert_eq!(processor.height, 100);
+    }
+
+    // WebAssembly固有の機能を使わない純粋なロジックテスト
+    
+    #[test]
+    fn test_gaussian_blur_preserves_data_length() {
+        let mut processor = ImageProcessor { width: 10, height: 10 };
+        let mut data = create_test_image_data(10, 10);
+        let original_len = data.len();
+        
+        processor.gaussian_blur(&mut data, 2.0);
+        
+        assert_eq!(data.len(), original_len);
+        // Alpha値は変更されないことを確認
+        for i in (0..data.len()).step_by(4) {
+            assert_eq!(data[i + 3], 255);
+        }
+    }
+
+    #[test]
+    fn test_gaussian_blur_zero_radius() {
+        let mut processor = ImageProcessor { width: 5, height: 5 };
+        let mut data = create_test_image_data(5, 5);
+        let original_data = data.clone();
+        
+        processor.gaussian_blur(&mut data, 0.0);
+        
+        // 半径0の場合、データは変更されない
+        assert_eq!(data, original_data);
+    }
+
+    #[test]
+    fn test_sepia_tone_effect() {
+        let mut processor = ImageProcessor { width: 2, height: 2 };
+        let mut data = vec![
+            255, 0, 0, 255,    // 赤
+            0, 255, 0, 255,    // 緑
+            0, 0, 255, 255,    // 青
+            255, 255, 255, 255 // 白
+        ];
+        
+        processor.sepia_tone(&mut data);
+        
+        // セピア効果が適用されていることを確認
+        // 赤い画素がセピア調になっているか
+        assert!(data[0] > 0);  // R成分
+        assert!(data[1] > 0);  // G成分
+        assert_eq!(data[3], 255); // Alpha値は保持
+    }
+
+    #[test]
+    fn test_negative_effect() {
+        let mut processor = ImageProcessor { width: 2, height: 1 };
+        let mut data = vec![
+            255, 0, 128, 255,  // テスト色
+            100, 200, 50, 255  // テスト色
+        ];
+        let original_data = data.clone();
+        
+        processor.negative(&mut data);
+        
+        // ネガ効果の確認
+        assert_eq!(data[0], 255 - original_data[0]); // R反転
+        assert_eq!(data[1], 255 - original_data[1]); // G反転
+        assert_eq!(data[2], 255 - original_data[2]); // B反転
+        assert_eq!(data[3], original_data[3]);       // Alpha保持
+        
+        assert_eq!(data[4], 255 - original_data[4]); // R反転
+        assert_eq!(data[5], 255 - original_data[5]); // G反転
+        assert_eq!(data[6], 255 - original_data[6]); // B反転
+        assert_eq!(data[7], original_data[7]);       // Alpha保持
+    }
+
+    #[test]
+    fn test_get_gray_value() {
+        let processor = ImageProcessor { width: 3, height: 1 };
+        let data = vec![
+            255, 0, 0, 255,    // 赤
+            0, 255, 0, 255,    // 緑
+            0, 0, 255, 255,    // 青
+        ];
+        
+        let gray_red = processor.get_gray_value(&data, 0, 0, 3);
+        let gray_green = processor.get_gray_value(&data, 1, 0, 3);
+        let gray_blue = processor.get_gray_value(&data, 2, 0, 3);
+        
+        // グレースケール変換の妥当性確認
+        assert!(gray_red > 0);
+        assert!(gray_green > gray_red);  // 緑は赤より明るい
+        assert!(gray_blue > 0);
+    }
+
+    #[test]
+    fn test_data_integrity_after_multiple_effects() {
+        let mut processor = ImageProcessor { width: 10, height: 10 };
+        let mut data = create_test_image_data(10, 10);
+        let original_len = data.len();
+        
+        // 複数のエフェクトを順次適用
+        processor.gaussian_blur(&mut data, 1.0);
+        processor.sepia_tone(&mut data);
+        
+        // データ長とAlpha値の整合性確認
+        assert_eq!(data.len(), original_len);
+        for i in (0..data.len()).step_by(4) {
+            assert_eq!(data[i + 3], 255);
+        }
+    }
+
+    #[test]
+    fn test_blur_horizontal_basic() {
+        let processor = ImageProcessor { width: 3, height: 1 };
+        let mut data = vec![
+            255, 0, 0, 255,    // 赤
+            0, 255, 0, 255,    // 緑  
+            0, 0, 255, 255,    // 青
+        ];
+        
+        processor.blur_horizontal(&mut data, 3, 1, 1.0);
+        
+        // ブラー後もAlpha値は保持
+        assert_eq!(data[3], 255);
+        assert_eq!(data[7], 255);
+        assert_eq!(data[11], 255);
     }
 }
