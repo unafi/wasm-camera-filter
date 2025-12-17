@@ -112,34 +112,46 @@
             <h2>🏗️ システムアーキテクチャ</h2>
             
             <div class="architecture-diagram">
-                <pre>
-【フロントエンド】
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   index.html    │───▶│    main.js      │    │   style.css     │
-│  (エントリー)    │    │  (JavaScript)   │    │   (スタイル)     │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │
-                                ▼
-【WebAssembly】              ┌─────────────────┐
-┌─────────────────┐    ┌────▶│  WebRTC API     │
-│   src/lib.rs    │    │     │ (カメラアクセス)  │
-│   (Rust実装)     │    │     └─────────────────┘
-└─────────────────┘    │
-         │              │     ┌─────────────────┐
-         ▼              └────▶│  Canvas API     │
-┌─────────────────┐           │  (画像処理)      │
-│   wasm-bindgen  │           └─────────────────┘
-│  (バインディング) │
-└─────────────────┘
-         │
-         ▼
-【生成ファイル】
-┌─────────────────┐    ┌─────────────────┐
-│ wasm_camera_    │    │ wasm_camera_    │
-│ filter.js       │    │ filter_bg.wasm  │
-│ (JSバインディング)│    │ (WASMバイナリ)   │
-└─────────────────┘    └─────────────────┘
-                </pre>
+                <h4>📋 システム構成</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin: 20px 0;">
+                    <div style="text-align: center; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                        <strong>🌐 フロントエンド</strong><br>
+                        • index.html (エントリー)<br>
+                        • main.js (JavaScript制御)<br>
+                        • style.css (スタイル)
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #fff3e0; border-radius: 8px;">
+                        <strong>⚡ WebAssembly</strong><br>
+                        • src/lib.rs (Rust実装)<br>
+                        • wasm-bindgen (バインディング)
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #f3e5f5; border-radius: 8px;">
+                        <strong>🔧 ブラウザAPI</strong><br>
+                        • WebRTC API (カメラ)<br>
+                        • Canvas API (画像処理)
+                    </div>
+                </div>
+                
+                <h4>📦 生成ファイル</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                    <div style="text-align: center; padding: 15px; background: #e8f5e8; border-radius: 8px;">
+                        <strong>wasm_camera_filter.js</strong><br>
+                        JavaScriptバインディング
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: #e8f5e8; border-radius: 8px;">
+                        <strong>wasm_camera_filter_bg.wasm</strong><br>
+                        WebAssemblyバイナリ
+                    </div>
+                </div>
+
+                <h4>🔄 データフロー</h4>
+                <div style="text-align: center; font-family: monospace; line-height: 1.8; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    index.html → main.js → WebRTC API (カメラ取得)<br>
+                    ↓<br>
+                    Canvas API → WebAssembly (画像処理)<br>
+                    ↓<br>
+                    処理結果 → Canvas表示 → ユーザー
+                </div>
             </div>
 
             <h3>主要コンポーネント</h3>
