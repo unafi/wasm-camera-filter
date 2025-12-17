@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAssembly Camera Filter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ヘッダー -->
+        <header class="app-header">
+            <h1>📸 WASM Camera Filter</h1>
+            <div class="performance-display">
+                <span id="fps-display">FPS: --</span>
+                <span id="engine-display">Engine: WASM</span>
+            </div>
+        </header>
+
+        <!-- メインカメラビュー -->
+        <main class="camera-container">
+            <!-- カメラ映像表示 -->
+            <div class="video-container">
+                <video id="camera-video" autoplay muted playsinline></video>
+                <canvas id="output-canvas"></canvas>
+            </div>
+
+            <!-- エラーメッセージ -->
+            <div id="error-message" class="error-message hidden">
+                <p>カメラアクセスが必要です</p>
+                <button id="retry-camera">再試行</button>
+            </div>
+
+            <!-- ローディング表示 -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>カメラを初期化中...</p>
+            </div>
+        </main>
+
+        <!-- コントロールパネル -->
+        <div class="controls-panel">
+            <!-- エフェクト選択 -->
+            <div class="effect-controls">
+                <h3>エフェクト</h3>
+                <div class="effect-buttons">
+                    <button class="effect-btn active" data-effect="0">HDRアニメ</button>
+                    <button class="effect-btn" data-effect="1">ブラー</button>
+                    <button class="effect-btn" data-effect="2">エッジ</button>
+                    <button class="effect-btn" data-effect="3">セピア</button>
+                    <button class="effect-btn" data-effect="4">ネガ</button>
+                    <button class="effect-btn" data-effect="5">シャープ</button>
+                </div>
+            </div>
+
+            <!-- パフォーマンス比較 -->
+            <div class="performance-controls">
+                <h3>パフォーマンス比較</h3>
+                <div class="engine-toggle">
+                    <button id="wasm-engine" class="engine-btn active">WebAssembly</button>
+                    <button id="js-engine" class="engine-btn">JavaScript</button>
+                </div>
+                <div class="performance-stats">
+                    <div class="stat">
+                        <span>WASM FPS:</span>
+                        <span id="wasm-fps">--</span>
+                    </div>
+                    <div class="stat">
+                        <span>JS FPS:</span>
+                        <span id="js-fps">--</span>
+                    </div>
+                    <div class="stat">
+                        <span>速度比:</span>
+                        <span id="speed-ratio">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- アクションボタン -->
+            <div class="action-controls">
+                <button id="capture-btn" class="capture-btn">
+                    📷 撮影
+                </button>
+                <button id="toggle-camera" class="toggle-btn">
+                    🔄 カメラ切替
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScriptモジュール読み込み -->
+    <script type="module" src="main.js"></script>
+</body>
+</html>

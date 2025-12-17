@@ -1,0 +1,329 @@
+/* モバイル最適化CSS */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    overflow-x: hidden;
+}
+
+.app-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ヘッダー */
+.app-header {
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.app-header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.performance-display {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* カメラコンテナ */
+.camera-container {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    aspect-ratio: 4/3;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+#camera-video,
+#output-canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+#camera-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+#output-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+}
+
+/* エラーメッセージ */
+.error-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: rgba(220, 53, 69, 0.9);
+    padding: 2rem;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+.error-message button {
+    margin-top: 1rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: #dc3545;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.error-message button:hover {
+    transform: scale(1.05);
+}
+
+/* ローディング */
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* コントロールパネル */
+.controls-panel {
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.controls-panel h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* エフェクトボタン */
+.effect-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.effect-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.effect-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.effect-btn.active {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+/* エンジン切り替え */
+.engine-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.engine-btn {
+    flex: 1;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.engine-btn.active {
+    background: rgba(34, 197, 94, 0.3);
+    border-color: rgba(34, 197, 94, 0.5);
+}
+
+/* パフォーマンス統計 */
+.performance-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+/* アクションボタン */
+.action-controls {
+    display: flex;
+    gap: 1rem;
+}
+
+.capture-btn {
+    flex: 2;
+    padding: 1rem;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(238, 90, 36, 0.4);
+}
+
+.capture-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(238, 90, 36, 0.6);
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    color: white;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+/* ユーティリティクラス */
+.hidden {
+    display: none !important;
+}
+
+/* レスポンシブデザイン */
+@media (min-width: 768px) {
+    .controls-panel {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 2rem;
+    }
+    
+    .effect-controls,
+    .performance-controls,
+    .action-controls {
+        flex: 1;
+    }
+    
+    .action-controls {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .performance-display {
+        font-size: 0.8rem;
+    }
+    
+    .effect-buttons {
+        flex-direction: column;
+    }
+    
+    .effect-btn {
+        min-width: auto;
+    }
+}
+
+/* タッチデバイス最適化 */
+@media (hover: none) and (pointer: coarse) {
+    .effect-btn,
+    .engine-btn,
+    .capture-btn,
+    .toggle-btn {
+        min-height: 44px; /* タッチターゲットサイズ */
+    }
+    
+    .effect-btn:hover,
+    .engine-btn:hover,
+    .capture-btn:hover,
+    .toggle-btn:hover {
+        transform: none; /* ホバー効果を無効化 */
+    }
+}

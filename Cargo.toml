@@ -1,0 +1,29 @@
+[package]
+name = "wasm-camera-filter"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+  "ImageData",
+  "CanvasRenderingContext2d",
+  "HtmlCanvasElement",
+  "Window",
+  "Document",
+]
+
+[profile.release]
+# WebAssembly最適化設定
+opt-level = "s"  # サイズ最適化
+lto = true       # Link Time Optimization
+debug = false    # デバッグ情報を除去
+panic = "abort"  # パニック時の処理を軽量化
